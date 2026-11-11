@@ -1,4 +1,5 @@
 from pathlib import Path
+import numpy as np
 
 from simulation.distortions import ConstantBias, GaussianNoise
 from simulation.engine import SimulationEngine
@@ -6,7 +7,7 @@ from simulation.exporters import CSVExporter
 from simulation.generators import SineWaveGenerator
 from simulation.plotters import ResultPlotter
 from simulation.sensors import Sensor
-from simulation.voters import WeightedVoter
+from simulation.voters import PredictorCorrectorVoter, WeightedVoter
 
 
 def main():
@@ -25,9 +26,16 @@ def main():
       Sensor("Sensor_C", generator, [GaussianNoise(std_dev=noise_c, seed=3)]),
   ]
 
-  # 3. Algorytm głosowania; wagi ~ 1/sigma^2 (im mniej szumu, tym większa waga)
+  # 3. Algorytmy głosowania
   weights = [1 / noise_a**2, 1 / noise_b**2, 1 / noise_c**2]
-  voters = [WeightedVoter(weights)]
+  voters = [
+      WeightedVoter(weights),
+      PredictorCorrectorVoter(
+          agreement_threshold=0.15,
+          prediction_threshold=0.25,
+          prediction_method="quadratic",
+      ),
+  ]
 
   # 4. Symulacja
   engine = SimulationEngine(generator, sensors, voters)
@@ -35,7 +43,8 @@ def main():
 
   print(f"Odczyty: {result.readings.shape}")
   for name, err in result.rmse().items():
-    print(f"  RMSE {name:<9}: {err:.4f}")
+    valid_count = int(np.sum(~np.isnan(result.consensus[name])))
+    print(f"  RMSE {name:<20}: {err:.4f} (wyniki: {valid_count}/{num_samples})")
 
   # 5. Eksport
   output_path = Path("simulation_results.csv")

@@ -17,11 +17,15 @@ class SimulationResult:
   consensus: Dict[str, np.ndarray]    # nazwa votera -> wynik głosowania
 
   def rmse(self) -> Dict[str, float]:
-    """Błąd średniokwadratowy każdego votera względem czystego sygnału."""
-    return {
-        name: float(np.sqrt(np.mean((c - self.reference) ** 2)))
-        for name, c in self.consensus.items()
-    }
+    """Błąd średniokwadratowy każdego votera względem czystego sygnału (ignoruje brak wyniku NaN)."""
+    errors: Dict[str, float] = {}
+    for name, c in self.consensus.items():
+      valid = ~np.isnan(c)
+      if np.any(valid):
+        errors[name] = float(np.sqrt(np.mean((c[valid] - self.reference[valid]) ** 2)))
+      else:
+        errors[name] = float("nan")
+    return errors
 
   def to_columns(self) -> Dict[str, np.ndarray]:
     """Kolumny w kolejności: czas, reference, sensory, konsensusy."""
