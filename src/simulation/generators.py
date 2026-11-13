@@ -4,6 +4,8 @@ import numpy as np
 class SignalGenerator:
   """Klasa bazowa (interfejs) dla generatorów sygnałów."""
 
+  name = "Sygnał"  # nazwa w nagłówku CSV i legendzie wykresu
+
   def time_axis(self, num_samples: int) -> np.ndarray:
     """Oś czasu (lub fazy), dla której generowany jest sygnał."""
     raise NotImplementedError
@@ -15,6 +17,8 @@ class SignalGenerator:
 
 class SineWaveGenerator(SignalGenerator):
   """Generator fali sinusoidalnej. Domyślnie jeden pełny okres."""
+
+  name = "Sygnał sinusoidalny"
 
   def __init__(
       self,

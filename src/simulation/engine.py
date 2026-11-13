@@ -15,6 +15,7 @@ class SimulationResult:
   sensor_ids: List[str]
   readings: np.ndarray                # [num_sensors, num_samples]
   consensus: Dict[str, np.ndarray]    # nazwa votera -> wynik głosowania
+  reference_name: str = "Sygnał wzorcowy"  # nazwa sygnału referencyjnego
 
   def rmse(self) -> Dict[str, float]:
     """Błąd średniokwadratowy każdego votera względem czystego sygnału (ignoruje brak wyniku NaN)."""
@@ -29,11 +30,11 @@ class SimulationResult:
 
   def to_columns(self) -> Dict[str, np.ndarray]:
     """Kolumny w kolejności: czas, reference, sensory, konsensusy."""
-    cols = {"time": self.time, "reference": self.reference}
+    cols = {"Czas [rad]": self.time, self.reference_name: self.reference}
     for sid, row in zip(self.sensor_ids, self.readings):
       cols[sid] = row
     for name, c in self.consensus.items():
-      cols[f"vote_{name}"] = c
+      cols[name] = c
     return cols
 
 
@@ -59,4 +60,5 @@ class SimulationEngine:
         sensor_ids=[s.sensor_id for s in self.sensors],
         readings=readings,
         consensus=consensus,
+        reference_name=self.generator.name,
     )

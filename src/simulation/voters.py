@@ -12,7 +12,7 @@ PredictionMethod = Union[
 class Voter:
   """Klasa bazowa dla algorytmów głosowania."""
 
-  name = "voter"
+  name = "Głosowanie"  # nazwa w nagłówku CSV i legendzie wykresu
 
   def vote(self, readings: np.ndarray) -> np.ndarray:
     """Agreguje odczyty (kształt: [num_sensors, num_samples])."""
@@ -22,7 +22,7 @@ class Voter:
 class WeightedVoter(Voter):
   """Średnia ważona. Wagi są normalizowane do sumy 1."""
 
-  name = "weighted"
+  name = "Algorytm średniej ważonej"
 
   def __init__(self, weights: Sequence[float]):
     w = np.asarray(weights, dtype=float)
@@ -53,7 +53,7 @@ class PredictorCorrectorVoter(Voter):
      3 historycznych wyników), algorytm nie zwraca wyniku (`np.nan`).
   """
 
-  name = "predictor_corrector"
+  name = "Predyktor pierwszego rzędu"
   HISTORY_SIZE = 3
 
   def __init__(

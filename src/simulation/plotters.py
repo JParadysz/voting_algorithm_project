@@ -16,11 +16,12 @@ class ResultPlotter:
     )
 
     # Góra: sygnał referencyjny, sensory (cienko) i konsensusy (grubo)
-    ax_top.plot(result.time, result.reference, "k--", lw=2, label="reference")
+    ax_top.plot(result.time, result.reference, "k--", lw=2,
+                label=result.reference_name)
     for sid, row in zip(result.sensor_ids, result.readings):
       ax_top.plot(result.time, row, lw=0.8, alpha=0.6, label=sid)
     for name, c in result.consensus.items():
-      ax_top.plot(result.time, c, lw=1.8, label=f"vote: {name}")
+      ax_top.plot(result.time, c, lw=1.8, label=name)
     ax_top.set_ylabel("Amplituda")
     ax_top.set_title("Odczyty sensorów i wyniki głosowania")
     ax_top.legend(ncol=3, fontsize=8)
