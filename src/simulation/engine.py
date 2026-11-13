@@ -47,11 +47,15 @@ class SimulationEngine:
     self.voters = voters
 
   def run(self, num_samples: int) -> SimulationResult:
-    readings = np.array([s.read(num_samples) for s in self.sensors])
+    # Oś czasu i czysty sygnał liczone raz, a następnie współdzielone
+    time = self.generator.time_axis(num_samples)
+    reference = self.generator.generate(num_samples)
+
+    readings = np.array([s.read(reference) for s in self.sensors])
     consensus = {v.name: v.vote(readings) for v in self.voters}
     return SimulationResult(
-        time=self.generator.time_axis(num_samples),
-        reference=self.generator.generate(num_samples),
+        time=time,
+        reference=reference,
         sensor_ids=[s.sensor_id for s in self.sensors],
         readings=readings,
         consensus=consensus,

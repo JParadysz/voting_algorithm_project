@@ -20,10 +20,10 @@ def main():
   # 2. Sensory o różnych charakterystykach (seed -> powtarzalne wyniki)
   noise_a, noise_b, noise_c = 0.05, 0.2, 0.1
   sensors = [
-      Sensor("Sensor_A", generator, [GaussianNoise(std_dev=noise_a, seed=1)]),
-      Sensor("Sensor_B", generator,
+      Sensor("Sensor_A", [GaussianNoise(std_dev=noise_a, seed=1)]),
+      Sensor("Sensor_B",
              [GaussianNoise(std_dev=noise_b, seed=2), ConstantBias(0.4)]),
-      Sensor("Sensor_C", generator, [GaussianNoise(std_dev=noise_c, seed=3)]),
+      Sensor("Sensor_C", [GaussianNoise(std_dev=noise_c, seed=3)]),
   ]
 
   # 3. Algorytmy głosowania
