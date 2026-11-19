@@ -1,5 +1,6 @@
 from collections import deque
 from typing import Callable, Literal, Optional, Sequence, Union
+from abc import ABC, abstractmethod
 import numpy as np
 
 
@@ -9,11 +10,12 @@ PredictionMethod = Union[
 ]
 
 
-class Voter:
+class Voter(ABC):
   """Klasa bazowa dla algorytmów głosowania."""
 
   name = "Głosowanie"  # nazwa w nagłówku CSV i legendzie wykresu
 
+  @abstractmethod
   def vote(self, readings: np.ndarray) -> np.ndarray:
     """Agreguje odczyty (kształt: [num_sensors, num_samples])."""
     raise NotImplementedError
