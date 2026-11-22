@@ -68,7 +68,9 @@ class SquareWaveGenerator(SignalGenerator):
     return self.offset + self.amplitude * np.sign(np.sin(omega * t))
 
 class ExponentialResponseGenerator(SignalGenerator):
-  """Generator odpowiedzi wykładniczej (np. charakterystyki cieplnej)."""
+  """Generator odpowiedzi wykładniczej (np. charakterystyki cieplnej).
+  T(t) = T_initial + 
+  """
 
   name = "Odpowiedź wykładnicza"
 

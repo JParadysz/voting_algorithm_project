@@ -49,7 +49,7 @@ class SimulationSinus(SimulationPreset):
         Sensor("Czujnik A", [GaussianNoise(std_dev=noise_a, seed=1)]),
         Sensor(
             "Czujnik B",
-            [GaussianNoise(std_dev=noise_b, seed=2), ConstantBias(0.4)],
+            [GaussianNoise(std_dev=noise_b, seed=2)],
         ),
         Sensor("Czujnik C", [GaussianNoise(std_dev=noise_c, seed=3)]),
     ]
@@ -86,23 +86,29 @@ class SimulationTemperature(SimulationPreset):
     generator = ExponentialResponseGenerator()
 
     # 2. Sensory o różnych charakterystykach
-    noise_a, noise_b, noise_c = 0.05, 0.2, 0.1
+    noise_a, noise_b, noise_c = 1, 2.5, 5
     sensors = [
-        Sensor("Czujnik A", [GaussianNoise(std_dev=noise_a, seed=1), 
-                             EMISpikes(0.05, 0.5),
-                             TurbulenceNoise(0.2),
-                             ConstantBias(0.1)]),
+        Sensor("Czujnik A", [
+                             GaussianNoise(std_dev=noise_a, seed=1), 
+                             # EMISpikes(0.05, 0.5),
+                             # TurbulenceNoise(0.2),
+                             # ConstantBias(0.1)
+                             ]),
         Sensor(
             "Czujnik B",
-            [GaussianNoise(std_dev=noise_b, seed=2),
-             EMISpikes(0.05, 0.5),
-             TurbulenceNoise(0.2)
+            [
+             GaussianNoise(std_dev=noise_b, seed=2),
+             # EMISpikes(0.05, 0.5),
+             # TurbulenceNoise(0.2)
             ],
         ),
-        Sensor("Czujnik C", [GaussianNoise(std_dev=noise_c, seed=3), 
-                             EMISpikes(0.05, 0.5),
-                             TurbulenceNoise(0.2),
-                             LongTermDrift(0.1)]),
+
+        Sensor("Czujnik C", [
+                             GaussianNoise(std_dev=noise_c, seed=3), 
+                             # EMISpikes(0.05, 0.5),
+                             # TurbulenceNoise(0.2),
+                             # LongTermDrift(0.1)
+                             ]),
     ]
 
     # 3. Algorytmy głosowania
@@ -110,8 +116,8 @@ class SimulationTemperature(SimulationPreset):
     voters = [
         WeightedVoter(weights),
         PredictorCorrectorVoter(
-            agreement_threshold=0.15,
-            prediction_threshold=0.25,
+            agreement_threshold=1,
+            prediction_threshold=5,
             prediction_method="quadratic",
         ),
     ]
