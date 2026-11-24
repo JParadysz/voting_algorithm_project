@@ -8,7 +8,7 @@ from simulation.exporters import CSVExporter
 from simulation.generators import SineWaveGenerator, ExponentialResponseGenerator
 from simulation.plotters import ResultPlotter
 from simulation.sensors import Sensor
-from simulation.voters import PredictorCorrectorVoter, WeightedVoter
+from simulation.voters import PredictorCorrectorVoter, SmoothingVoter, WeightedVoter
 
 class SimulationPreset(ABC):
   @staticmethod
@@ -63,6 +63,12 @@ class SimulationSinus(SimulationPreset):
             prediction_threshold=0.25,
             prediction_method="quadratic",
         ),
+        SmoothingVoter(agreement_threshold=0.15, smoothing_threshold=0.25),
+        SmoothingVoter(
+            agreement_threshold=0.15,
+            smoothing_threshold=0.25,
+            accumulate_threshold=True,
+        ),
     ]
 
     # 4. Symulacja
@@ -89,7 +95,7 @@ class SimulationTemperature(SimulationPreset):
     noise_a, noise_b, noise_c = 1, 2.5, 5
     sensors = [
         Sensor("Czujnik A", [
-                             GaussianNoise(std_dev=noise_a, seed=1), 
+                             GaussianNoise(std_dev=noise_a, seed=1),
                              # EMISpikes(0.05, 0.5),
                              # TurbulenceNoise(0.2),
                              # ConstantBias(0.1)
@@ -104,7 +110,7 @@ class SimulationTemperature(SimulationPreset):
         ),
 
         Sensor("Czujnik C", [
-                             GaussianNoise(std_dev=noise_c, seed=3), 
+                             GaussianNoise(std_dev=noise_c, seed=3),
                              # EMISpikes(0.05, 0.5),
                              # TurbulenceNoise(0.2),
                              # LongTermDrift(0.1)
@@ -119,6 +125,12 @@ class SimulationTemperature(SimulationPreset):
             agreement_threshold=1,
             prediction_threshold=5,
             prediction_method="quadratic",
+        ),
+        SmoothingVoter(agreement_threshold=1, smoothing_threshold=5),
+        SmoothingVoter(
+            agreement_threshold=1,
+            smoothing_threshold=5,
+            accumulate_threshold=True,
         ),
     ]
 
