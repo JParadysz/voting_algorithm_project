@@ -10,6 +10,30 @@ PredictionMethod = Union[
 ]
 
 
+def find_majority_consensus(
+    sample: np.ndarray, agreement_threshold: float
+) -> Optional[float]:
+  """Szuka największej grupy co najmniej większości sensorów o rozrzucie <= agreement_threshold.
+
+  Zwraca średnią tej grupy albo None, gdy zgody większościowej brak.
+  Wspólny krok algorytmów opartych na głosowaniu większościowym.
+  """
+  num_sensors = len(sample)
+  majority_count = num_sensors // 2 + 1
+  sorted_vals = np.sort(sample)
+
+  # Szukamy największego przedziału [i, i + k - 1] (k >= majority_count),
+  # w którym różnica skrajnych wartości nie przekracza progu zgody.
+  for k in range(num_sensors, majority_count - 1, -1):
+    spreads = sorted_vals[k - 1 :] - sorted_vals[: num_sensors - k + 1]
+    valid_indices = np.where(spreads <= agreement_threshold)[0]
+    if len(valid_indices) > 0:
+      best_start = int(valid_indices[np.argmin(spreads[valid_indices])])
+      return float(np.mean(sorted_vals[best_start : best_start + k]))
+
+  return None
+
+
 class Voter(ABC):
   """Klasa bazowa dla algorytmów głosowania."""
 
@@ -74,21 +98,8 @@ class PredictorCorrectorVoter(Voter):
     self.prediction_method = prediction_method
 
   def _find_majority_consensus(self, sample: np.ndarray) -> Optional[float]:
-    """Szuka największej grupy co najmniej większości sensorów o rozrzucie <= agreement_threshold."""
-    num_sensors = len(sample)
-    majority_count = num_sensors // 2 + 1
-    sorted_vals = np.sort(sample)
-
-    # Szukamy największego przedziału [i, i + k - 1] (k >= majority_count),
-    # w którym różnica skrajnych wartości nie przekracza progu zgody.
-    for k in range(num_sensors, majority_count - 1, -1):
-      spreads = sorted_vals[k - 1 :] - sorted_vals[: num_sensors - k + 1]
-      valid_indices = np.where(spreads <= self.agreement_threshold)[0]
-      if len(valid_indices) > 0:
-        best_start = int(valid_indices[np.argmin(spreads[valid_indices])])
-        return float(np.mean(sorted_vals[best_start : best_start + k]))
-
-    return None
+    """Zgoda większościowa w ramach agreement_threshold (None, gdy brak)."""
+    return find_majority_consensus(sample, self.agreement_threshold)
 
   def _predict(self, history: Sequence[float]) -> float:
     """Oblicza wartość spodziewaną na podstawie 3 ostatnich wyników głosowania."""
@@ -134,5 +145,91 @@ class PredictorCorrectorVoter(Voter):
       if consensus is not None:
         output[t] = consensus
         history.append(consensus)
+
+    return output
+
+
+class SmoothingVoter(Voter):
+  """Algorytm wygładzający (Smoothing Voter).
+
+  Rozszerzenie algorytmu większościowego o test akceptacyjny oparty na założeniu,
+  że nieciągłość (zbyt duży skok) między kolejnymi wynikami wskazuje na błąd.
+
+  Działanie dla każdej próbki:
+  1. Sprawdza zgodność większościową wariantów w ramach `agreement_threshold`.
+     Jeśli jest zgoda, wynikiem jest średnia zgodnej grupy.
+  2. W razie braku zgody wybiera jako kandydata wartość najbliższą poprzedniemu
+     wynikowi algorytmu.
+  3. Jeżeli odległość kandydata od poprzedniego wyniku nie przekracza progu
+     wygładzania `smoothing_threshold` (β), kandydat jest wynikiem.
+  4. W przeciwnym razie algorytm nie zwraca wyniku (`np.nan`). Punktem odniesienia
+     pozostaje ostatni poprawny wynik.
+
+  Założenie: pierwszy cykl kończy się pomyślnie i daje punkt odniesienia. Gdy w pierwszych
+  próbkach nie ma zgody większościowej, algorytm zwraca `np.nan` do czasu pierwszej zgody.
+
+  Wersja zmodyfikowana (`accumulate_threshold=True`) przyspiesza powrót do poprawnej pracy
+  po błędach przejściowych. Dopuszczalne odchylenie od punktu odniesienia jest zadane przez
+  skumulowany próg, czyli przedział [-β, +β], który po każdym cyklu bez wyniku rozszerza się
+  o β w stronę, w którą odchylił się kandydat (górna granica +β dla odchylenia dodatniego,
+  dolna -β dla ujemnego). Po uzyskaniu wyniku przedział wraca do [-β, +β].
+  """
+
+  name = "Algorytm wygładzający"
+
+  def __init__(
+      self,
+      agreement_threshold: float,
+      smoothing_threshold: float,
+      accumulate_threshold: bool = False,
+  ):
+    if agreement_threshold < 0:
+      raise ValueError("Próg zgody (agreement_threshold) musi być nieujemny.")
+    if smoothing_threshold < 0:
+      raise ValueError("Próg wygładzania (smoothing_threshold) musi być nieujemny.")
+
+    self.agreement_threshold = float(agreement_threshold)
+    self.smoothing_threshold = float(smoothing_threshold)
+    self.accumulate_threshold = bool(accumulate_threshold)
+    # Nazwa instancji: obie wersje mogą występować w jednej symulacji
+    if self.accumulate_threshold:
+      self.name = "Algorytm wygładzający zmodyfikowany"
+
+  def vote(self, readings: np.ndarray) -> np.ndarray:
+    if readings.ndim != 2 or readings.shape[0] == 0:
+      raise ValueError(
+          "Odczyty muszą mieć kształt [num_sensors, num_samples] i co najmniej 1 sensor."
+      )
+
+    beta = self.smoothing_threshold
+    num_samples = readings.shape[1]
+    output = np.full(num_samples, np.nan, dtype=float)
+
+    reference: Optional[float] = None  # ostatni poprawny wynik algorytmu
+    lower, upper = -beta, beta         # przedział akceptacji odchylenia od reference
+
+    for t in range(num_samples):
+      sample = readings[:, t]
+
+      # Krok 1: zgoda większościowa
+      consensus = find_majority_consensus(sample, self.agreement_threshold)
+
+      # Krok 2: brak zgody -> kandydat najbliższy poprzedniemu wynikowi + test akceptacyjny
+      if consensus is None and reference is not None:
+        candidate = float(sample[np.argmin(np.abs(sample - reference))])
+        deviation = candidate - reference
+        if lower <= deviation <= upper:
+          consensus = candidate
+        elif self.accumulate_threshold:
+          # Cykl bez wyniku: rozszerzamy przedział w stronę odchylenia
+          if deviation > 0:
+            upper += beta
+          else:
+            lower -= beta
+
+      if consensus is not None:
+        output[t] = consensus
+        reference = consensus
+        lower, upper = -beta, beta
 
     return output
